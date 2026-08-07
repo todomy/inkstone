@@ -50,8 +50,10 @@ storage = "sqlite"
 [ai]
 binding = "AI"
 
+#[triggers]
+#crons = ["0 * * * *", "15,45 * * * *"]
 [triggers]
-crons = ["0 * * * *", "15,45 * * * *"]
+crons = ["0,15,45 * * * *"]
 
 [vars]
 APP_NAME = "Inkstone"
