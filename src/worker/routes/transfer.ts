@@ -1,7 +1,20 @@
 import { Hono } from 'hono'
+import {
+  backupCompletePath,
+  backupManifestPath,
+  backupSnapshotDir,
+  completeManifestHash,
+  isSafeBackupPath,
+  MARKDOWN_BACKUP_FORMAT,
+  parseMarkdownBackupManifest,
+  type MarkdownBackupAttachmentEntry,
+  type MarkdownBackupManifest,
+  type MarkdownBackupNoteEntry,
+} from '@shared/backup-format'
 import { LIMITS } from '@shared/constants'
 import { countText, deriveExcerpt, deriveTitle, splitFrontMatter } from '@shared/markdown-utils'
 import { truncateText, utf8ByteLength } from '@shared/text-utils'
+import { organizerColorOrNull } from '@shared/organizer-colors'
 import type { ExportBundle, ImportResult } from '@shared/types'
 import {
   persistAttachment,
@@ -22,17 +35,19 @@ import {
 } from '../db/writes'
 import { enqueueNoteIndex } from '../mcp/ai-search'
 import {
-  assertArchiveCanBeRestored,
   assertBundleCanBeRestored,
+  buildJsonExport,
   buildSnapshot,
+  formatStamp,
 } from '../backup/snapshot'
+import { createBackupArchive } from '../backup/archive'
 import { sha256Hex } from '../lib/encoding'
 import { ApiError } from '../lib/errors'
 import { isValidId, newId } from '../lib/id'
 import { acquireLease } from '../lib/lease'
 import { broadcastCursor, scheduleFtsDrain } from '../lib/notify'
 import { assertContentSize, FORM_BODY_LIMITS, readFormDataWithinLimit } from '../lib/request'
-import { createZip, readZip, type UnzippedEntry } from '@shared/zip'
+import { readZip, type UnzippedEntry } from '@shared/zip'
 import {
   buildObsidianAssetIndex,
   collectObsidianReferences,
@@ -79,27 +94,29 @@ transferRoutes.get('/export', async (c) => {
   )
   try {
     const format = c.req.query('format') === 'json' ? 'json' : 'zip'
-    const snapshot = await buildSnapshot(c.env, userId, { includeAttachments: format !== 'json' })
 
     if (format === 'json') {
-      const bundle = snapshot.files.find((f) => f.path === EXPORT_FILE)
-      if (!bundle) throw new Error('Failed to generate the export file')
-      assertBundleCanBeRestored(bundle.body)
-      return new Response(bundle.body as BodyInit, {
+      const bundle = await buildJsonExport(c.env, userId)
+      assertBundleCanBeRestored(bundle)
+      return new Response(bundle as BodyInit, {
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
-          'Content-Disposition': `attachment; filename="inkstone-export-${snapshot.stamp}.json"`,
+          'Content-Disposition': `attachment; filename="inkstone-export-${formatStamp(new Date())}.json"`,
           'Cache-Control': 'private, no-store',
         },
       })
     }
 
-    assertArchiveCanBeRestored(snapshot.files)
-    const zip = createZip(snapshot.files.map((f) => ({ path: f.path, data: f.body })))
-    return new Response(zip as BodyInit, {
+    const snapshot = await buildSnapshot(c.env, userId)
+    const archive = createBackupArchive(snapshot)
+    const fixed = new FixedLengthStream(archive.byteLength)
+    void archive.stream.pipeTo(fixed.writable).catch((error) => {
+      console.error('[inkstone] Streaming ZIP export failed:', error)
+    })
+    return new Response(fixed.readable as BodyInit, {
       headers: {
         'Content-Type': 'application/zip',
-        'Content-Disposition': `attachment; filename="inkstone-backup-${snapshot.stamp}.zip"`,
+        'Content-Disposition': `attachment; filename="${archive.filename}"`,
         'Cache-Control': 'private, no-store',
       },
     })
@@ -128,6 +145,12 @@ transferRoutes.post('/import', async (c) => {
   ) {
     throw ApiError.tooLarge(`A single import cannot exceed ${formatBytes(LIMITS.importUploadMaxBytes)}`)
   }
+  const backupManifest = parsePostedBackupManifest(form.get('backupManifest'))
+  const backupPaths = parsePostedBackupPaths(form.get('backupPaths'), files.length)
+  const selectedFiles = files.map((file, index) => ({
+    file,
+    path: backupPaths?.[index] ?? file.name,
+  }))
 
   const result: ImportResult = {
     createdNotes: 0,
@@ -142,10 +165,35 @@ transferRoutes.post('/import', async (c) => {
   const byId = new Map<string, ExistingNoteIndex | null>()
 
   const folderCache = new Map<string, string>()
-  await primeFolderCache(c.env.DB, userId, folderCache)
+  if (!backupManifest || backupManifest.notes.length) {
+    await primeFolderCache(c.env.DB, userId, folderCache)
+  }
 
-  for (const file of files) {
-    const name = file.name.toLowerCase()
+  if (backupManifest) {
+    try {
+      await importBackupFileBatch(c, userId, selectedFiles, backupManifest, {
+        conflict,
+        byId,
+        folderCache,
+        result,
+        ftsEnabled,
+      })
+    } catch (error) {
+      if (error instanceof ApiError) throw error
+      throw ApiError.badRequest(error instanceof Error ? error.message : String(error))
+    }
+    if (backupManifest.notes.length) {
+      await pruneOrphanTags(c.env.DB, userId)
+      await broadcastCursor(c)
+      scheduleFtsDrain(c, 20)
+    }
+    return c.json(result)
+  }
+
+  for (const selected of selectedFiles) {
+    const file = selected.file
+    const name = selected.path.toLowerCase()
+    let strictBackup = false
     try {
       if (name.endsWith('.zip')) {
         const bytes = new Uint8Array(await file.arrayBuffer())
@@ -154,12 +202,45 @@ transferRoutes.post('/import', async (c) => {
           maxEntryBytes: LIMITS.importArchiveExpandedMaxBytes,
           maxTotalBytes: LIMITS.importArchiveExpandedMaxBytes,
         }
-        const bundles = await readZip(bytes, {
+        const controls = await readZip(bytes, {
           ...zipOptions,
-          maxEntryBytes: LIMITS.importBundleMaxBytes,
-          maxTotalBytes: LIMITS.importBundleMaxBytes,
-          include: isExportBundlePath,
+          maxEntryBytes: LIMITS.importUploadMaxBytes,
+          maxTotalBytes: LIMITS.importUploadMaxBytes + 1024,
+          include: isBackupControlPath,
         })
+        strictBackup = controls.some((entry) =>
+          isMarkdownBackupControlPath(entry.path) || isInkstoneBackupManifest(entry),
+        )
+        const backup = await selectCompleteZipBackup(controls)
+        if (strictBackup && !backup) {
+          throw new Error('The Inkstone backup ZIP is missing a valid manifest or COMPLETE marker')
+        }
+        if (backup) {
+          if (backup.warning) addWarning(result, backup.warning)
+          const expected = new Set(
+            [...backup.manifest.notes, ...backup.manifest.attachments]
+              .map((entry) => `${backup.rootPrefix}${entry.path}`.toLowerCase()),
+          )
+          const entries = await readZip(bytes, {
+            ...zipOptions,
+            maxEntryBytes: LIMITS.importUploadMaxBytes,
+            include: (path) => expected.has(path.toLowerCase()),
+          })
+          if (entries.length !== expected.size) throw new Error('The backup ZIP is missing one or more files')
+          await importBackupFileBatch(
+            c,
+            userId,
+            entries.map((entry) => ({
+              file: new File([entry.data], entry.path.split('/').at(-1) ?? 'file'),
+              path: entry.path.slice(backup.rootPrefix.length),
+            })),
+            backup.manifest,
+            { conflict, byId, folderCache, result, ftsEnabled },
+          )
+          continue
+        }
+
+        const bundles = controls.filter((entry) => isExportBundlePath(entry.path))
         const bundleEntry = bundles[0]
         if (bundles.length > 1) {
           throw new Error('The ZIP contains multiple inkstone-export.json files and is ambiguous')
@@ -217,16 +298,22 @@ transferRoutes.post('/import', async (c) => {
         if (file.size > LIMITS.contentMaxBytes) {
           throw new Error(`Note content cannot exceed ${formatBytes(LIMITS.contentMaxBytes)}`)
         }
-        await importMarkdown(c, userId, file.name, await file.text(), {
+        await importMarkdown(c, userId, selected.path, await file.text(), {
           folderCache,
           result,
           ftsEnabled,
         })
       } else {
-        addWarning(result, `Skipped unsupported file: ${file.name}`)
+        addWarning(result, `Skipped unsupported file: ${selected.path}`)
       }
     } catch (err) {
-      addWarning(result, `${file.name}: ${err instanceof Error ? err.message : String(err)}`)
+      if (strictBackup) {
+        if (err instanceof ApiError) throw err
+        throw ApiError.badRequest(
+          `${selected.path}: ${err instanceof Error ? err.message : String(err)}`,
+        )
+      }
+      addWarning(result, `${selected.path}: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
 
@@ -247,6 +334,284 @@ interface ImportContext {
   assets?: ObsidianAssetIndex
 }
 
+interface SelectedImportFile {
+  file: File
+  path: string
+}
+
+function parsePostedBackupManifest(value: string | File | null): MarkdownBackupManifest | null {
+  if (value === null) return null
+  if (typeof value !== 'string' || value.length > LIMITS.importBundleMaxBytes) {
+    throw ApiError.badRequest('The backup manifest is too large')
+  }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(value)
+  } catch {
+    throw ApiError.badRequest('The backup manifest is not valid JSON')
+  }
+  const manifest = parseMarkdownBackupManifest(parsed)
+  if (!manifest) throw ApiError.badRequest('This is not a valid Inkstone Markdown backup manifest')
+  return manifest
+}
+
+function parsePostedBackupPaths(value: string | File | null, count: number): string[] | null {
+  if (value === null) return null
+  if (typeof value !== 'string' || value.length > 1024 * 1024) throw ApiError.badRequest('The backup file list is too large')
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(value)
+  } catch {
+    throw ApiError.badRequest('The backup file list is not valid JSON')
+  }
+  if (
+    !Array.isArray(parsed) ||
+    parsed.length !== count ||
+    parsed.some((path) => !isSafeBackupPath(path))
+  ) {
+    throw ApiError.badRequest('The backup file list is invalid')
+  }
+  return parsed as string[]
+}
+
+async function importBackupFileBatch(
+  c: { env: AppBindings['Bindings'] },
+  userId: string,
+  selected: readonly SelectedImportFile[],
+  manifest: MarkdownBackupManifest,
+  ctx: ImportContext,
+): Promise<void> {
+  const noteByPath = new Map(manifest.notes.map((entry) => [entry.path.toLowerCase(), entry]))
+  const attachmentByPath = new Map(
+    manifest.attachments.map((entry) => [entry.path.toLowerCase(), entry]),
+  )
+  const seen = new Set<string>()
+  const planned = selected.map(({ file, path }) => {
+    if (!isSafeBackupPath(path)) throw new Error(`Invalid backup path: ${path}`)
+    const key = path.toLowerCase()
+    if (seen.has(key)) throw new Error(`The selected backup contains a duplicate path: ${path}`)
+    seen.add(key)
+    const note = noteByPath.get(key)
+    const attachment = attachmentByPath.get(key)
+    if (!note && !attachment) throw new Error(`The file is not listed in the backup manifest: ${path}`)
+    return { file, path, note, attachment }
+  })
+
+  for (const item of planned) {
+    const entry = item.note ?? item.attachment!
+    const bytes = new Uint8Array(await item.file.arrayBuffer())
+    await verifyBackupEntry(
+      bytes,
+      item.note ? item.note.bytes : item.attachment!.size,
+      entry.sha256,
+      entry.path,
+    )
+    if (item.note) {
+      try {
+        new TextDecoder('utf-8', { fatal: true, ignoreBOM: false }).decode(bytes)
+      } catch {
+        throw new Error(`The Markdown file is not valid UTF-8: ${item.note.path}`)
+      }
+    }
+  }
+
+  for (const item of planned.filter((entry) => entry.attachment)) {
+    const entry = item.attachment!
+    const bytes = new Uint8Array(await item.file.arrayBuffer())
+    await importBackupAttachment(c.env, userId, entry, bytes, ctx)
+  }
+  for (const item of planned.filter((entry) => entry.note)) {
+    const entry = item.note!
+    const bytes = new Uint8Array(await item.file.arrayBuffer())
+    let text: string
+    try {
+      text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: false }).decode(bytes)
+    } catch {
+      throw new Error(`The Markdown file is not valid UTF-8: ${entry.path}`)
+    }
+    await importBackupMarkdown(c, userId, entry, text, manifest, ctx)
+  }
+}
+
+async function verifyBackupEntry(
+  bytes: Uint8Array,
+  expectedBytes: number,
+  expectedHash: string,
+  path: string,
+): Promise<void> {
+  if (bytes.byteLength !== expectedBytes) throw new Error(`Backup file length verification failed: ${path}`)
+  if ((await sha256Hex(bytes)) !== expectedHash) throw new Error(`Backup file SHA-256 verification failed: ${path}`)
+}
+
+async function importBackupAttachment(
+  env: AppBindings['Bindings'],
+  userId: string,
+  entry: MarkdownBackupAttachmentEntry,
+  bytes: Uint8Array,
+  ctx: ImportContext,
+): Promise<void> {
+  if (entry.size > LIMITS.attachmentMaxBytes) {
+    throw new Error(`${entry.filename}: the attachment exceeds ${formatBytes(LIMITS.attachmentMaxBytes)}`)
+  }
+  if (!selectAttachmentStorage(env)) {
+    throw new Error('This instance has no R2 or Workers KV attachment binding and cannot restore attachments')
+  }
+
+  const candidate: PreparedAttachmentCandidate = {
+    sourceId: entry.sha256,
+    sourceNoteId: null,
+    filename: entry.filename,
+    reportedMime: entry.mime,
+    bytes,
+    sha256: entry.sha256,
+    createdAt: validTimestamp(entry.createdAt) || Date.now(),
+  }
+  const existing = (await loadExistingAttachments(env.DB, userId, [entry.sha256])).get(entry.sha256)
+  if (existing?.user_id === userId && await existingAttachmentMatches(env, existing, candidate)) {
+    ctx.result.skippedAttachments++
+    return
+  }
+
+  const sameContent = await env.DB.prepare(
+    `SELECT id, user_id, filename, mime, size, sha256, storage
+       FROM attachments
+      WHERE user_id = ?1 AND sha256 = ?2
+      ORDER BY created_at ASC, id ASC LIMIT 1`,
+  ).bind(userId, entry.sha256).first<ExistingAttachmentRow>()
+  if (sameContent && await existingAttachmentMatches(env, sameContent, candidate)) {
+    await upsertImportMappings(env.DB, userId, 'attachment', [
+      { sourceId: entry.sha256, targetId: sameContent.id },
+    ])
+    ctx.result.skippedAttachments++
+    return
+  }
+
+  const persisted = await persistAttachment(env, {
+    id: newId(),
+    userId,
+    noteId: null,
+    filename: entry.filename,
+    reportedMime: entry.mime,
+    bytes,
+    createdAt: candidate.createdAt,
+  })
+  try {
+    await upsertImportMappings(env.DB, userId, 'attachment', [
+      { sourceId: entry.sha256, targetId: persisted.id },
+    ])
+  } catch (error) {
+    await rollbackPersistedAttachments(env, [persisted]).catch(() => {})
+    throw error
+  }
+  ctx.result.createdAttachments++
+}
+
+const BACKUP_ATTACHMENT_URL_RE =
+  /(?:\.\.\/)+attachments\/([0-9a-f]{64})--[^\s<>"')\]?#]+/g
+
+async function importBackupMarkdown(
+  c: { env: AppBindings['Bindings'] },
+  userId: string,
+  entry: MarkdownBackupNoteEntry,
+  backupContent: string,
+  manifest: MarkdownBackupManifest,
+  ctx: ImportContext,
+): Promise<void> {
+  const hashes = entry.attachmentHashes
+  const expectedHashes = new Set(hashes)
+  const attachmentIds = await loadBackupAttachmentTargets(c.env.DB, userId, hashes)
+  for (const hash of hashes) {
+    if (!attachmentIds.has(hash)) throw new Error(`Restore the referenced attachment before this note: ${entry.path}`)
+  }
+  const content = backupContent.replace(
+    BACKUP_ATTACHMENT_URL_RE,
+    (match, hash: string) => expectedHashes.has(hash)
+      ? `/api/files/${attachmentIds.get(hash)}`
+      : match,
+  )
+  assertContentSize(content)
+
+  const statePrefix = manifest.version === 2
+    ? `${backupSnapshotDir(manifest.snapshot)}/${entry.state}/`
+    : `${entry.state}/`
+  if (!entry.path.startsWith(statePrefix)) throw new Error(`Invalid backup note path: ${entry.path}`)
+  const folderId = entry.folder.length
+    ? await ensureFolderPath(c.env.DB, userId, entry.folder.join('/'), ctx)
+    : null
+  const sourceId = entry.id
+  const importedUpdatedAt = validTimestamp(entry.updatedAt)
+  const importedCreatedAt = validTimestamp(entry.createdAt)
+  const deletedAt = entry.state === 'trash'
+    ? validTimestamp(entry.deletedAt) || importedUpdatedAt || Date.now()
+    : undefined
+  const effectiveUpdatedAt = Math.max(importedUpdatedAt || importedCreatedAt, deletedAt ?? 0)
+  const input: InsertInput = {
+    id: sourceId,
+    content,
+    title: entry.title,
+    folderId,
+    isArchived: entry.archived,
+    createdAt: importedCreatedAt,
+    updatedAt: effectiveUpdatedAt,
+    deletedAt,
+  }
+  const existing = await loadExistingNoteIndex(c.env.DB, userId, sourceId, ctx)
+  if (existing) {
+    if (ctx.conflict === 'skip') {
+      ctx.result.skippedNotes++
+      return
+    }
+    if (ctx.conflict === 'duplicate') {
+      await insertNote(c, userId, { ...input, id: undefined, title: `${entry.title} (imported)` }, ctx)
+      ctx.result.createdNotes++
+      return
+    }
+    const outcome = await updateImportedNote(
+      c,
+      userId,
+      existing,
+      input,
+      effectiveUpdatedAt,
+      ctx,
+    )
+    if (outcome === 'updated') ctx.result.updatedNotes++
+    else {
+      ctx.result.skippedNotes++
+      if (outcome === 'conflict') addWarning(ctx.result, `${entry.title}: the current note changed during restore and was kept`)
+    }
+    return
+  }
+
+  const insertedId = await insertNote(c, userId, input, ctx)
+  ctx.byId?.set(sourceId, {
+    id: insertedId,
+    title: entry.title,
+    rev: 1,
+    updated_at: effectiveUpdatedAt,
+  })
+  ctx.result.createdNotes++
+}
+
+async function loadBackupAttachmentTargets(
+  db: D1Database,
+  userId: string,
+  hashes: readonly string[],
+): Promise<Map<string, string>> {
+  const targets = new Map<string, string>()
+  for (let offset = 0; offset < hashes.length; offset += 80) {
+    const chunk = hashes.slice(offset, offset + 80)
+    const placeholders = chunk.map((_, index) => `?${index + 2}`).join(', ')
+    const { results } = await db.prepare(
+      `SELECT m.source_id, m.target_id FROM import_mappings m
+        JOIN attachments a ON a.id = m.target_id AND a.user_id = m.user_id
+       WHERE m.user_id = ?1 AND m.entity = 'attachment'
+         AND m.source_id IN (${placeholders})`,
+    ).bind(userId, ...chunk).all<{ source_id: string; target_id: string }>()
+    for (const row of results) targets.set(row.source_id, row.target_id)
+  }
+  return targets
+}
+
 interface ExistingNoteIndex {
   id: string
   title: string
@@ -259,6 +624,7 @@ interface SourceFolder {
   parentId: string | null
   name: string
   icon: string | null
+  color: string | null
   position?: number
   createdAt?: number
   updatedAt?: number
@@ -266,6 +632,7 @@ interface SourceFolder {
 
 interface FolderImportMetadata {
   icon: string | null
+  color: string | null
   position?: number
   createdAt?: number
   updatedAt?: number
@@ -318,6 +685,7 @@ async function importBundle(
       name,
       parentId: sourceKey(rawFolder.parentId) ?? null,
       icon: typeof rawFolder.icon === 'string' ? truncateText(rawFolder.icon, 8) || null : null,
+      color: organizerColorOrNull(rawFolder.color),
       position: finiteNumber(rawFolder.position),
       createdAt: validTimestamp(rawFolder.createdAt),
       updatedAt: validTimestamp(rawFolder.updatedAt),
@@ -410,7 +778,7 @@ async function importBundle(
       const importedUpdatedAt = validTimestamp(note.updatedAt)
       const importedDeletedAt = validTimestamp(note.deletedAt)
       const effectiveUpdatedAt = Math.max(
-        importedUpdatedAt || importedCreatedAt || Date.now(),
+        importedUpdatedAt || importedCreatedAt,
         importedDeletedAt,
       )
       const existing = sourceId
@@ -783,17 +1151,18 @@ async function restoreTagMetadata(
   userId: string,
   rawTags: unknown[],
 ): Promise<void> {
-  const byName = new Map<string, { name: string; color: string }>()
+  const byName = new Map<string, { id: string; name: string; color: string | null }>()
   for (const raw of rawTags) {
-    if (!isRecord(raw) || typeof raw.name !== 'string' || typeof raw.color !== 'string') continue
+    if (!isRecord(raw) || typeof raw.name !== 'string') continue
     const name = raw.name.trim().replace(/^#+/, '')
-    if (
-      !name ||
-      name.length > LIMITS.tagNameMaxLength ||
-      /[\s#]/.test(name) ||
-      !raw.color.trim()
-    ) continue
-    byName.set(name, { name, color: truncateText(raw.color.trim(), 32) })
+    if (!name || name.length > LIMITS.tagNameMaxLength || /[\s#]/.test(name)) continue
+    byName.set(name.toLocaleLowerCase(), {
+      id: newId(),
+      name,
+      color: typeof raw.color === 'string' && /^#[0-9a-f]{6}$/i.test(raw.color.trim())
+        ? raw.color.trim()
+        : null,
+    })
   }
   if (!byName.size) return
 
@@ -801,22 +1170,34 @@ async function restoreTagMetadata(
   const now = Date.now()
   await db.batch([
     db.prepare(
-      `UPDATE tags SET color = (
-         SELECT json_extract(j.value, '$.color') FROM json_each(?1) AS j
-          WHERE json_extract(j.value, '$.name') = tags.name LIMIT 1
-       )
-       WHERE user_id = ?2 AND color IS NULL
-         AND EXISTS (
-           SELECT 1 FROM json_each(?1) AS j
-            WHERE json_extract(j.value, '$.name') = tags.name
-         )`,
+      `INSERT INTO tags (id, user_id, name, color, is_manual, created_at)
+       SELECT json_extract(j.value, '$.id'), ?2,
+              json_extract(j.value, '$.name'), json_extract(j.value, '$.color'), 1, ?3
+         FROM json_each(?1) AS j
+        WHERE NOT EXISTS (
+          SELECT 1 FROM tags existing
+           WHERE existing.user_id = ?2
+             AND existing.name = json_extract(j.value, '$.name') COLLATE NOCASE
+        )`,
+    ).bind(rows, userId, now),
+    db.prepare(
+      `UPDATE tags SET
+         color = COALESCE(color, (
+           SELECT json_extract(j.value, '$.color') FROM json_each(?1) AS j
+            WHERE json_extract(j.value, '$.name') = tags.name COLLATE NOCASE LIMIT 1
+         )),
+         is_manual = 1
+       WHERE user_id = ?2 AND EXISTS (
+         SELECT 1 FROM json_each(?1) AS j
+          WHERE json_extract(j.value, '$.name') = tags.name COLLATE NOCASE
+       )`,
     ).bind(rows, userId),
     db.prepare(
       `INSERT INTO changes (user_id, entity, entity_id, op, at)
        SELECT ?1, 'tag', t.id, 'upsert', ?2
          FROM tags t JOIN json_each(?3) AS j
-           ON json_extract(j.value, '$.name') = t.name
-        WHERE t.user_id = ?1 AND t.color = json_extract(j.value, '$.color')`,
+           ON json_extract(j.value, '$.name') = t.name COLLATE NOCASE
+        WHERE t.user_id = ?1`,
     ).bind(userId, now, rows),
   ])
 }
@@ -909,7 +1290,8 @@ async function updateImportedNote(
   ctx: ImportContext,
 ): Promise<'updated' | 'skipped' | 'conflict' | 'missing'> {
   const current = await c.env.DB.prepare(
-    `SELECT id, title, content, rev, position, created_at, updated_at, deleted_at
+    `SELECT id, title, content, rev, position, is_pinned, is_starred,
+            created_at, updated_at, deleted_at
        FROM notes WHERE id = ?1 AND user_id = ?2`,
   ).bind(existing.id, userId).first<{
     id: string
@@ -917,6 +1299,8 @@ async function updateImportedNote(
     content: string
     rev: number
     position: number
+    is_pinned: number
+    is_starred: number
     created_at: number
     updated_at: number
     deleted_at: number | null
@@ -949,8 +1333,8 @@ async function updateImportedNote(
     chars,
     hash,
     input.folderId,
-    input.isPinned === true ? 1 : 0,
-    input.isStarred === true ? 1 : 0,
+    input.isPinned === undefined ? current.is_pinned : input.isPinned ? 1 : 0,
+    input.isStarred === undefined ? current.is_starred : input.isStarred ? 1 : 0,
     input.isArchived === true ? 1 : 0,
     position,
     createdAt,
@@ -1176,11 +1560,12 @@ async function ensureFolderPath(
       : now
     const position = isFinal ? finiteNumber(finalMetadata?.position) ?? now : now
     const icon = isFinal ? finalMetadata?.icon ?? null : null
+    const color = isFinal ? finalMetadata?.color ?? null : null
     const insert = db.prepare(
       `INSERT OR IGNORE INTO folders
-         (id, user_id, parent_id, name, icon, position, created_at, updated_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`,
-    ).bind(id, userId, parentId, segment, icon, position, createdAt, updatedAt)
+         (id, user_id, parent_id, name, icon, color, position, created_at, updated_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
+    ).bind(id, userId, parentId, segment, icon, color, position, createdAt, updatedAt)
     const [created] = await db.batch([
       insert,
       db.prepare(
@@ -1237,6 +1622,105 @@ function normalizeFolderSegment(value: string): string {
 function isExportBundlePath(path: string): boolean {
   const lower = path.toLowerCase()
   return lower === EXPORT_FILE || lower.endsWith(`/${EXPORT_FILE}`)
+}
+
+function isBackupControlPath(path: string): boolean {
+  const lower = path.toLowerCase()
+  return isExportBundlePath(path) ||
+    lower === 'manifest.json' || lower.endsWith('/manifest.json') ||
+    lower === 'complete' || lower.endsWith('/complete') ||
+    isMarkdownBackupControlPath(path)
+}
+
+function isMarkdownBackupControlPath(path: string): boolean {
+  return /(?:^|\/)snapshots\/\d{8}-\d{6}-\d{3}\/(?:manifest\.json|complete|readme\.txt)$/i.test(path)
+}
+
+function isInkstoneBackupManifest(entry: UnzippedEntry): boolean {
+  if (!/(?:^|\/)manifest\.json$/i.test(entry.path)) return false
+  try {
+    const raw = JSON.parse(new TextDecoder().decode(entry.data)) as unknown
+    return isRecord(raw) && raw.format === MARKDOWN_BACKUP_FORMAT
+  } catch {
+    return false
+  }
+}
+
+async function selectCompleteZipBackup(entries: readonly UnzippedEntry[]): Promise<{
+  manifest: MarkdownBackupManifest
+  rootPrefix: string
+  warning: string | null
+} | null> {
+  const byPath = new Map(entries.map((entry) => [entry.path.toLowerCase(), entry]))
+  const candidates: Array<{
+    entry: UnzippedEntry
+    manifest: MarkdownBackupManifest
+    rootPrefix: string
+    complete: UnzippedEntry | undefined
+  }> = []
+  let manifestSeen = false
+  const skipped: string[] = []
+
+  for (const entry of entries) {
+    if (!/(?:^|\/)manifest\.json$/i.test(entry.path)) continue
+    const legacyPath = /(?:^|\/)snapshots\/\d{8}-\d{6}-\d{3}\/manifest\.json$/i.test(entry.path)
+    const directory = entry.path.slice(0, entry.path.lastIndexOf('/') + 1)
+    const siblingComplete = byPath.get(`${directory}complete`.toLowerCase())
+    let raw: unknown
+    try {
+      raw = JSON.parse(new TextDecoder().decode(entry.data))
+    } catch {
+      if (legacyPath || siblingComplete) manifestSeen = true
+      if (siblingComplete) throw new Error(`The completed backup has an invalid manifest: ${entry.path}`)
+      continue
+    }
+    const declaresInkstone = isRecord(raw) && raw.format === MARKDOWN_BACKUP_FORMAT
+    if (legacyPath || declaresInkstone) manifestSeen = true
+    const manifest = parseMarkdownBackupManifest(raw)
+    if (!manifest) {
+      if (siblingComplete && declaresInkstone) {
+        throw new Error(`The completed backup has an invalid or unsupported manifest: ${entry.path}`)
+      }
+      continue
+    }
+    const suffix = backupManifestPath(manifest.snapshot, manifest.version)
+    if (!entry.path.toLowerCase().endsWith(suffix.toLowerCase())) {
+      if (siblingComplete) throw new Error(`The backup manifest is in an invalid path: ${entry.path}`)
+      continue
+    }
+    const rootPrefix = entry.path.slice(0, entry.path.length - suffix.length)
+    candidates.push({
+      entry,
+      manifest,
+      rootPrefix,
+      complete: byPath.get(
+        `${rootPrefix}${backupCompletePath(manifest.snapshot, manifest.version)}`.toLowerCase(),
+      ),
+    })
+  }
+
+  candidates.sort((a, b) => b.manifest.snapshot.localeCompare(a.manifest.snapshot))
+  for (const { entry, manifest, rootPrefix, complete } of candidates) {
+    if (!complete) {
+      skipped.push(manifest.snapshot)
+      continue
+    }
+    const declaredHash = completeManifestHash(new TextDecoder().decode(complete.data))
+    const actualHash = await sha256Hex(entry.data)
+    if (!declaredHash || declaredHash !== actualHash) {
+      throw new Error(`The COMPLETE marker does not match ${entry.path}`)
+    }
+    return {
+      manifest,
+      rootPrefix,
+      warning: skipped.length
+        ? `A newer snapshot (${skipped[0]}) was incomplete, so the newest complete snapshot was restored instead`
+        : null,
+    }
+  }
+
+  if (manifestSeen) throw new Error('The ZIP contains an incomplete Inkstone backup without a valid COMPLETE marker')
+  return null
 }
 
 function collectAttachmentArchivePaths(raw: unknown, bundlePath: string): Set<string> {

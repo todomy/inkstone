@@ -220,15 +220,50 @@ export const ZH_CN_MESSAGES = {
     "editor.uploading_value0": "![上传中 {value0}…]()",
     "feedback.dismiss": "关闭提示",
     "graph.building_graph": "正在计算关系…",
+    "graph.all_folders": "全部文件夹",
+    "graph.all_tags": "全部标签",
+    "graph.appearance": "外观",
     "graph.choose_a_note": "选择笔记…",
     "graph.connect_notes_with_wiki_links_and_their_graph_will_appear_here": "用 [[双链]] 把笔记连起来，这里就会长出一张网",
     "graph.could_not_load_graph": "无法加载关系图谱",
+    "graph.create_note": "创建这篇笔记",
+    "graph.depth": "链接深度",
+    "graph.direction_counts": "入 {incoming} · 出 {outgoing}",
     "graph.drag_to_pan_scroll_to_zoom_click_a_node_to_open_it_use_the_selector_abov": "拖动平移 · 滚轮缩放 · 点击节点打开笔记；键盘可用上方选择器",
     "graph.graph_canvas_drag_to_pan_and_scroll_to_zoom_keyboard_users_can_open_note": "关系图谱画布：可拖动平移、滚轮缩放；键盘用户可用上方选择器打开笔记",
     "graph.links": "条链接",
+    "graph.filters": "筛选",
+    "graph.fit": "适应画布",
+    "graph.folder": "文件夹",
+    "graph.forces": "布局力",
+    "graph.global": "全局",
+    "graph.graph_canvas_accessible": "关系图谱画布。方向键选择节点，加减号缩放，回车打开，Home 适应画布。",
+    "graph.group_by": "按颜色分组",
+    "graph.group_none": "不分组",
+    "graph.interaction_hint": "拖动平移 · 滚轮或双指缩放 · 点击打开 · 右键查看更多",
+    "graph.link_distance": "链接长度",
+    "graph.local": "局部",
+    "graph.local_requires_note": "请先打开一篇笔记，再查看它的局部图谱",
+    "graph.make_local_center": "以此笔记为中心",
+    "graph.node_actions": "节点操作",
+    "graph.node_size": "节点大小",
     "graph.notes": "篇笔记 ·",
     "graph.nothing_to_graph_yet": "还没有可以画的东西",
+    "graph.open_note": "打开笔记",
+    "graph.open_to_right": "在右侧打开",
     "graph.open_a_note_from_the_graph": "打开图谱中的笔记",
+    "graph.repulsion": "排斥力",
+    "graph.restore_defaults": "恢复默认外观",
+    "graph.scope": "图谱范围",
+    "graph.search_notes": "筛选笔记…",
+    "graph.settings": "图谱设置",
+    "graph.show_arrows": "显示链接方向",
+    "graph.show_labels": "显示标题",
+    "graph.show_orphans": "显示孤立笔记",
+    "graph.show_unresolved": "显示尚未创建的笔记",
+    "graph.showing_limit": "显示 {shown} / {total} 篇；继续筛选可缩小范围",
+    "graph.tag": "标签",
+    "graph.unresolved_short": "篇未创建",
     "graph.reset": "复位",
     "markdown.abstract": "摘要",
     "markdown.code": "代码",
@@ -306,6 +341,8 @@ export const ZH_CN_MESSAGES = {
     "notes.keep_notes_here_when_you_want_them_out_of_the_way_but_not_deleted": "暂时不看但又不想删的笔记可以放这里",
     "notes.keep_this_page_open_and_reconnect_as_soon_as_possible_closing_it_may_mak": "请保持页面打开并尽快恢复网络，否则关闭页面后内容可能无法恢复。",
     "notes.modified": "按修改时间",
+    "notes.recently_deleted_first": "最近删除的在前",
+    "notes.recently_edited_first": "最近编辑的在前",
     "notes.move_to_folder": "移动到文件夹",
     "notes.move_to_value0": "移到「{value0}」",
     "notes.move_value0_notes_to_trash": "把 {value0} 篇笔记移到回收站？",
@@ -377,8 +414,15 @@ export const ZH_CN_MESSAGES = {
     "pwa.install_description": "在独立窗口中打开 Inkstone，并让应用外壳保持离线可用。",
     "pwa.install_inkstone": "安装 Inkstone",
     "pwa.installed": "已安装",
-    "pwa.offline_ready": "Inkstone 已可离线打开",
-    "pwa.offline_ready_description": "应用外壳已保存在这台设备上。",
+    "pwa.offline_ready": "完整离线资源已准备好",
+    "pwa.offline_ready_description": "Inkstone 的所有功能现在都能在这台设备上断网打开。",
+    "pwa.complete_offline_access": "完整离线能力",
+    "pwa.complete_offline_preparing_description": "Inkstone 会保持流畅，并在后台安静地补齐其余功能。",
+    "pwa.complete_offline_ready": "全部功能已就绪",
+    "pwa.complete_offline_ready_description": "从未打开过的功能现在也可以离线使用。",
+    "pwa.complete_offline_retry_description": "已下载的资源会保留，网络恢复后将自动继续。",
+    "pwa.preparing_progress": "正在准备 {completed}/{total}",
+    "pwa.waiting_for_network": "等待继续",
     "pwa.refresh_now": "立即刷新",
     "pwa.update_ready": "应用更新已就绪",
     "pwa.update_ready_description": "方便时刷新即可；刷新前会先保存待处理的笔记更改。",
@@ -403,13 +447,16 @@ export const ZH_CN_MESSAGES = {
     "settings.update_dialog_title": "发现新版本",
     "settings.update_manual_fork_hint": "Inkstone 不会自动修改或部署你的 Fork。请在官方仓库确认变更后手动同步。",
     "settings.accent_color": "强调色",
-    "settings.accent.amber": "黄铜",
-    "settings.accent.celadon": "青瓷",
+    "settings.background_color": "背景色",
+    "settings.background_paper": "暖纸",
+    "settings.background_white": "纯白",
+    "settings.accent.amber": "金盏黄",
+    "settings.accent.celadon": "翡翠绿",
     "settings.accent.cinnabar": "朱砂",
-    "settings.accent.graphite": "石墨",
-    "settings.accent.indigo": "靛蓝",
-    "settings.accent.terracotta": "赤陶",
-    "settings.accent.wisteria": "紫藤",
+    "settings.accent.graphite": "雾岩灰",
+    "settings.accent.indigo": "深海蓝",
+    "settings.accent.terracotta": "湖水青",
+    "settings.accent.wisteria": "鸢尾紫",
     "settings.access_key_id": "Access Key ID",
     "settings.account": "账户",
     "settings.action_failed_try_again": "操作失败，请重试",
@@ -437,8 +484,16 @@ export const ZH_CN_MESSAGES = {
     "settings.back_up_now": "立即备份",
     "settings.backup": "备份",
     "settings.backup_completed_value0_targets": "备份完成 · {value0} 个目标",
+    "settings.backup_complete_marker_mismatch": "备份完成标记与清单不一致：{value0}",
+    "settings.backup_duplicate_path": "备份目录中存在重复路径：{value0}",
     "settings.backup_failed": "备份失败",
-    "settings.backup_format": "打包方式",
+    "settings.backup_file_checksum_failed": "备份文件校验失败：{value0}",
+    "settings.backup_file_size_mismatch": "备份文件大小不匹配：{value0}",
+    "settings.backup_manifest_not_found": "没有找到 Inkstone Markdown 备份清单，请选择解压后的完整备份目录（应包含 manifest.json、COMPLETE、notes 等）",
+    "settings.backup_manifest_invalid": "已完成快照的清单无效或版本不受支持：{value0}",
+    "settings.backup_missing_file": "完整备份缺少文件：{value0}",
+    "settings.backup_no_complete_snapshot": "这个目录里没有带有效 COMPLETE 标记的完整快照",
+    "settings.backup_newer_snapshot_skipped": "较新的快照（{value0}）未完成，已改为恢复最近一个完整快照",
     "settings.backup_target": "备份目标",
     "settings.backup_target_added": "已添加备份目标",
     "settings.backup_target_deleted": "已删除备份目标",
@@ -489,7 +544,7 @@ export const ZH_CN_MESSAGES = {
     "settings.display_name_saved": "显示名称已保存",
     "settings.download_json": "下载 JSON",
     "settings.download_zip": "下载 ZIP",
-    "settings.each_backup_goes_independently_to_every_enabled_target_it_includes_notes": "每次备份会同时投递到所有启用的目标，彼此独立。备份包含笔记、目录、标签和附件，可直接从 ZIP 完整恢复。",
+    "settings.each_backup_goes_independently_to_every_enabled_target_it_includes_notes": "每个目标都会收到一个可直接下载的完整 ZIP：笔记保持文件夹层级，归档、回收站和原始附件分开放置；生成和上传全程采用流式处理。",
     "settings.edit_backup_target": "编辑备份目标",
     "settings.editor": "编辑器",
     "settings.endpoint": "端点",
@@ -528,10 +583,8 @@ export const ZH_CN_MESSAGES = {
     "settings.import_failed": "导入失败",
     "settings.operation_completed_but_refresh_failed": "操作已完成，但页面刷新失败，请稍后重试",
     "settings.import_file": "导入文件",
-    "settings.includes_every_note_folder_tag_and_attachment_for_a_complete_restore_plu": "包含全部笔记、目录、标签和附件，可完整还原；同时保留可直接阅读的 .md",
+    "settings.includes_every_note_folder_tag_and_attachment_for_a_complete_restore_plu": "下载与自动备份相同的完整 ZIP；超大备份可解压后选择目录，Inkstone 会分批校验并恢复",
     "settings.indent_width": "缩进宽度",
-    "settings.individual_file_mirror": "逐文件镜像",
-    "settings.individual_files": "逐文件",
     "settings.inkstone_import_reminder": "[Inkstone] 导入提醒:",
     "settings.interface_density": "界面密度",
     "settings.interface_language": "界面语言",
@@ -682,6 +735,8 @@ export const ZH_CN_MESSAGES = {
     "settings.registration_open": "已开放注册",
     "settings.registration_status": "注册状态",
     "settings.region": "区域",
+    "settings.restore_backup_folder": "恢复 Inkstone 备份文件夹",
+    "settings.restore_backup_folder_description": "选择新 ZIP 解压后的目录，或旧版同时包含 attachments 和 snapshots 的备份根目录；Inkstone 会验证 COMPLETE 并分批恢复",
     "settings.reloaded_all_data": "已同步最新内容",
     "settings.render_and_using_katex": "显示行内公式和块级公式",
     "settings.render_mermaid_code_blocks_into_flowcharts": "将 Mermaid 代码块显示为图表",
@@ -695,6 +750,7 @@ export const ZH_CN_MESSAGES = {
     "settings.scroll_sync": "滚动同步",
     "settings.sec": "秒",
     "settings.select_file": "选择文件",
+    "settings.select_backup_folder": "选择备份文件夹",
     "settings.selected_avatar": "当前选择",
     "settings.select_object_read_write_for_permissions_and_create_it_directly": "，权限全选“对象读和写”，直接创建。",
     "settings.secret_access_key": "Secret Access Key",
@@ -705,7 +761,6 @@ export const ZH_CN_MESSAGES = {
     "settings.sign_in_security": "登录安全",
     "settings.sign_up": "前往注册",
     "settings.simplified_chinese": "简体中文",
-    "settings.single_archive": "单个压缩包",
     "settings.spellcheck": "拼写检查",
     "settings.standard": "标准",
     "settings.store_backups_in_this_directory_or_leave_blank_to_use_the_root_directory": "备份会放在这个目录下，留空则放在根目录",
@@ -731,8 +786,6 @@ export const ZH_CN_MESSAGES = {
     "settings.up_to_10_gb": "最高 10 GB",
     "settings.update_failed": "更新失败",
     "settings.upload_local_image": "上传本地图片",
-    "settings.upload_individual_files_so_they_remain_browsable_and_editable_in_the_sto": "逐个文件上传，可以直接在网盘里浏览和编辑",
-    "settings.upload_one_zip_to_minimize_requests_best_for_rate_limited_storage_provid": "打成一个 ZIP 上传，请求数最少，适合有限流的网盘",
     "settings.uploaded_avatar": "已上传的本地图片",
     "settings.use_name_avatar": "使用姓名头像",
     "settings.username_is_sign_in_id": "@用户名是登录标识，不会随显示名称一起改变。",
@@ -834,6 +887,18 @@ export const ZH_CN_MESSAGES = {
     "sidebar.move_failed": "移动失败",
     "sidebar.move_later": "向后移动",
     "sidebar.move_out_one_level": "移出当前文件夹",
+    "folders.appearance": "文件夹外观",
+    "folders.choose_parent": "选择上级文件夹",
+    "folders.color": "颜色",
+    "folders.delete_contents_move_up": "其中 {value0} 篇直属笔记和 {value1} 个直属子文件夹会向上移动一级；子文件夹里的笔记仍保留在原子文件夹中。",
+    "folders.icon": "图标",
+    "folders.includes_subfolders": "包含所有子文件夹中的笔记",
+    "folders.move_to": "移动到…",
+    "folders.no_color": "不设颜色",
+    "folders.no_icon": "默认图标",
+    "folders.no_match": "没有匹配的文件夹",
+    "folders.search": "搜索文件夹",
+    "folders.top_level": "最外层",
     "sidebar.new_subfolder": "新建子文件夹",
     "sidebar.rename": "重命名",
     "sidebar.rename_failed": "重命名失败",
@@ -844,19 +909,25 @@ export const ZH_CN_MESSAGES = {
     "sidebar.this_folder_is_empty": "这个文件夹是空的。",
     "tags.change_color": "更改颜色",
     "tags.clear_color": "清除颜色",
+    "tags.color": "颜色",
     "tags.color_failed": "更新颜色失败",
+    "tags.create_failed": "新建标签失败",
+    "tags.create_first": "新建第一个标签",
     "tags.delete": "删除标签",
     "tags.delete_confirm_value0": "删除标签「{value0}」？该标签也会从相关笔记的正文中移除。",
     "tags.delete_failed": "删除标签失败",
     "tags.deleted": "标签已删除",
-    "tags.empty_search": "没有匹配的标签",
+    "tags.delete_description_value0": "当前有 {value0} 篇活跃笔记使用它；归档和回收站中的匹配内容也会一并处理。操作前会为改动的笔记保留版本。",
     "tags.invalid_name": "标签名不能包含空格或 #",
-    "tags.manage": "标签管理",
+    "tags.merge": "合并标签",
+    "tags.merge_confirm_value0_value1": "将「{value0}」合并到「{value1}」？",
+    "tags.merge_description": "两个标签会合并为一个，相关笔记正文和元数据会统一使用已有标签名。",
+    "tags.new": "新建标签",
+    "tags.new_placeholder": "标签名称",
     "tags.rename": "重命名",
     "tags.rename_failed": "重命名失败",
     "tags.renamed": "标签已重命名",
-    "tags.search_placeholder": "搜索标签…",
-    "tags.total_value0": "共 {value0} 个标签",
+    "tags.updated_note_bodies_value0": "已同步处理 {value0} 篇笔记正文；打开中的笔记也已更新。",
     "time.just_now": "刚刚",
     "time.this_month": "本月",
     "time.this_week": "本周",
@@ -984,19 +1055,23 @@ aliases:
 
 ## 为什么适合长期使用
 
-::: tabs
-@tab 写作
+:::: tabs
+::: tab-item 写作
 独立标题、源码编辑、实时预览、双向滚动、专注模式、打字机模式、大纲与版本历史。
+:::
 
-@tab 组织
+::: tab-item 组织
 最多 12 层且可拖拽排序的文件夹、正文 \`#标签\`、\`[[双链]]\`、反向链接、关系图谱和中文全文搜索。桌面端可以在侧边再开一篇笔记，每个窗格独立选择编辑、分栏或预览；删除文件夹时会保留并提升子文件夹，直属笔记移到上一级。
+:::
 
-@tab 搜索与 AI
+::: tab-item 搜索与 AI
 命令面板、关键词搜索，以及可选的 Workers AI 语义/混合搜索。每个账号使用独立索引；AI 不可用时自动回退到关键词结果。
+:::
 
-@tab 安全与备份
+::: tab-item 安全与备份
 自托管、可安装 PWA、离线可写、多设备同步和冲突副本；可同时备份到多个 WebDAV 或 S3 目标，并导出可读 Markdown、附件与完整结构化数据。
 :::
+::::
 
 ## 私有 MCP（可选）
 
@@ -1090,13 +1165,15 @@ flowchart LR
 ~~~~
 
 ~~~~md-example title="标签页"
-::: tabs
-@tab 第一个标签
+:::: tabs
+::: tab-item 第一个标签
 这是第一个标签页的内容。
+:::
 
-@tab 第二个标签
+::: tab-item 第二个标签
 这是第二个标签页的内容。
 :::
+::::
 ~~~~
 
 ~~~~md-example title="折叠内容"

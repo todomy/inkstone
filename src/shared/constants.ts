@@ -6,7 +6,8 @@ export const GITHUB_REPOSITORY_URL = 'https://github.com/shuaiplus/inkstone'
 export const GITHUB_PACKAGE_URL =
   'https://raw.githubusercontent.com/shuaiplus/inkstone/refs/heads/main/package.json'
 export const CLIENT_HEADER = 'X-Inkstone-Client'
-export const SESSION_COOKIE = 'inkstone_session'
+export const SESSION_COOKIE = '__Host-inkstone_session'
+export const LEGACY_SESSION_COOKIE = 'inkstone_session'
 
 export const SESSION_TTL_MS = 90 * 24 * 60 * 60 * 1000
 export const SESSION_RENEW_BEFORE_MS = SESSION_TTL_MS / 2
@@ -18,31 +19,32 @@ export const LIMITS = {
   folderNameMaxLength: 120,
   tagNameMaxLength: 60,
   folderDepthMax: 12,
-  attachmentMaxBytes: 10 * 1024 * 1024,
-  importFilesMax: 100,
-  importUploadMaxBytes: 32 * 1024 * 1024,
-  importBundleMaxBytes: 24 * 1024 * 1024,
+  attachmentMaxBytes: 25 * 1024 * 1024,
+  attachmentQuotaBytes: 1024 * 1024 * 1024,
+  attachmentUploadsPerHour: 100,
+  importFilesMax: 500,
+  importUploadMaxBytes: 64 * 1024 * 1024,
+  importBundleMaxBytes: 32 * 1024 * 1024,
   importArchiveEntriesMax: 2500,
-  importArchiveExpandedMaxBytes: 48 * 1024 * 1024,
+  importArchiveExpandedMaxBytes: 80 * 1024 * 1024,
   versionsPerNote: 50,
   backupRunsKept: 50,
   backupTargetsMax: 12,
   changeLogKept: 5000,
   syncBatchSize: 500,
-  mirrorFileCeiling: 800,
   searchLimit: 50,
 
   ftsContentChars: 200_000,
 } as const
 
-export const ACCENTS: { name: AccentName; swatch: string }[] = [
-  { name: 'cinnabar', swatch: 'oklch(58% 0.15 31)' },
-  { name: 'indigo', swatch: 'oklch(62% 0.16 265)' },
-  { name: 'celadon', swatch: 'oklch(64% 0.105 175)' },
-  { name: 'amber', swatch: 'oklch(70% 0.14 70)' },
-  { name: 'terracotta', swatch: 'oklch(64% 0.15 33)' },
-  { name: 'wisteria', swatch: 'oklch(64% 0.15 305)' },
-  { name: 'graphite', swatch: 'oklch(55% 0.012 265)' },
+export const ACCENTS: { name: AccentName; swatch: string; foreground: string }[] = [
+  { name: 'cinnabar', swatch: 'oklch(58% 0.15 31)', foreground: 'white' },
+  { name: 'indigo', swatch: 'oklch(62% 0.16 252)', foreground: 'white' },
+  { name: 'celadon', swatch: 'oklch(66% 0.13 150)', foreground: 'oklch(16% 0.008 265)' },
+  { name: 'amber', swatch: 'oklch(76% 0.15 95)', foreground: 'oklch(16% 0.008 265)' },
+  { name: 'terracotta', swatch: 'oklch(68% 0.1 205)', foreground: 'oklch(16% 0.008 265)' },
+  { name: 'wisteria', swatch: 'oklch(62% 0.16 300)', foreground: 'white' },
+  { name: 'graphite', swatch: 'oklch(55% 0.035 250)', foreground: 'white' },
 ]
 
 export const PROSE_WIDTH_CH: Record<string, string> = {
@@ -59,6 +61,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
     language: 'zh-CN',
     theme: 'system',
     accent: 'cinnabar',
+    background: 'paper',
     density: 'comfortable',
     proseFont: 'sans',
     proseSize: 16,
@@ -102,6 +105,7 @@ export const BACKUP_INTERVALS: Record<string, number> = {
 const THEMES = ['light', 'dark', 'system'] as const
 const LANGUAGES = ['zh-CN', 'en-US'] as const
 const ACCENT_NAMES = ACCENTS.map((accent) => accent.name)
+const BACKGROUND_NAMES = ['paper', 'white'] as const
 const DENSITIES = ['comfortable', 'compact'] as const
 const PROSE_FONTS = ['sans', 'serif'] as const
 const PROSE_WIDTHS = ['narrow', 'normal', 'wide', 'full'] as const
@@ -126,6 +130,11 @@ export function mergeSettings(partial: unknown): UserSettings {
     base.appearance.language,
   )
   base.appearance.accent = enumValue(appearance.accent, ACCENT_NAMES, base.appearance.accent)
+  base.appearance.background = enumValue(
+    appearance.background,
+    BACKGROUND_NAMES,
+    base.appearance.background,
+  )
   base.appearance.density = enumValue(
     appearance.density,
     DENSITIES,

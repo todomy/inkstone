@@ -26,12 +26,20 @@ export function createApp() {
   app.onError((err, c) => errorResponse(c, err))
   app.use('*', async (c, next) => {
     await next()
+    const isHttps = new URL(c.req.url).protocol === 'https:'
+    const imageSchemes = isHttps ? 'https:' : 'https: http:'
     c.header('X-Content-Type-Options', 'nosniff')
     c.header('X-Frame-Options', 'DENY')
     c.header('Referrer-Policy', 'strict-origin-when-cross-origin')
     c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
-    c.header('Content-Security-Policy', "base-uri 'self'; frame-ancestors 'none'; object-src 'none'")
-    if (new URL(c.req.url).protocol === 'https:') {
+    c.header(
+      'Content-Security-Policy',
+        "default-src 'self'; base-uri 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; " +
+        `img-src 'self' data: blob: ${imageSchemes}; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; ` +
+        "manifest-src 'self'; media-src 'self' blob:; form-action 'self'; frame-src 'none'; " +
+        "frame-ancestors 'none'; object-src 'none'",
+    )
+    if (isHttps) {
       c.header('Strict-Transport-Security', 'max-age=31536000')
     }
     if (c.req.path.startsWith('/api/') && !c.res.headers.has('Cache-Control')) {
@@ -59,6 +67,7 @@ export function createApp() {
 
   app.get('/api/health', async (c) => {
     const database = c.get('database')
+    if (!c.get('userId')) return c.json({ ok: true })
     return c.json({
       ok: true,
       database: 'ready',

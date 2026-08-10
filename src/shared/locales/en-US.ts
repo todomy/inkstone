@@ -219,15 +219,50 @@ export const EN_US_MESSAGES = {
     "editor.uploading_value0": "![Uploading {value0}…]()",
     "feedback.dismiss": "Dismiss",
     "graph.building_graph": "Building graph…",
+    "graph.all_folders": "All folders",
+    "graph.all_tags": "All tags",
+    "graph.appearance": "Appearance",
     "graph.choose_a_note": "Choose a note…",
     "graph.connect_notes_with_wiki_links_and_their_graph_will_appear_here": "Connect notes with [[wiki links]] and their graph will appear here",
     "graph.could_not_load_graph": "Could not load the graph",
+    "graph.create_note": "Create this note",
+    "graph.depth": "Link depth",
+    "graph.direction_counts": "{incoming} in · {outgoing} out",
     "graph.drag_to_pan_scroll_to_zoom_click_a_node_to_open_it_use_the_selector_abov": "Drag to pan · Scroll to zoom · Click a node to open it · Use the selector above with a keyboard",
     "graph.graph_canvas_drag_to_pan_and_scroll_to_zoom_keyboard_users_can_open_note": "Graph canvas: drag to pan and scroll to zoom; keyboard users can open notes with the selector above",
     "graph.links": " links",
+    "graph.filters": "Filters",
+    "graph.fit": "Fit to canvas",
+    "graph.folder": "Folder",
+    "graph.forces": "Forces",
+    "graph.global": "Global",
+    "graph.graph_canvas_accessible": "Graph canvas. Use arrow keys to select nodes, plus and minus to zoom, Enter to open, and Home to fit.",
+    "graph.group_by": "Color by",
+    "graph.group_none": "No grouping",
+    "graph.interaction_hint": "Drag to pan · Scroll or pinch to zoom · Click to open · Right-click for more",
+    "graph.link_distance": "Link distance",
+    "graph.local": "Local",
+    "graph.local_requires_note": "Open a note before viewing its local graph",
+    "graph.make_local_center": "Use as local center",
+    "graph.node_actions": "Node actions",
+    "graph.node_size": "Node size",
     "graph.notes": " notes · ",
     "graph.nothing_to_graph_yet": "Nothing to graph yet",
+    "graph.open_note": "Open note",
+    "graph.open_to_right": "Open to the right",
     "graph.open_a_note_from_the_graph": "Open a note from the graph",
+    "graph.repulsion": "Repulsion",
+    "graph.restore_defaults": "Restore default appearance",
+    "graph.scope": "Graph scope",
+    "graph.search_notes": "Filter notes…",
+    "graph.settings": "Graph settings",
+    "graph.show_arrows": "Show link direction",
+    "graph.show_labels": "Show titles",
+    "graph.show_orphans": "Show orphan notes",
+    "graph.show_unresolved": "Show unresolved notes",
+    "graph.showing_limit": "Showing {shown} of {total}; add filters to narrow the graph",
+    "graph.tag": "Tag",
+    "graph.unresolved_short": " unresolved",
     "graph.reset": "Reset",
     "markdown.abstract": "Abstract",
     "markdown.code": "Code",
@@ -305,6 +340,8 @@ export const EN_US_MESSAGES = {
     "notes.keep_notes_here_when_you_want_them_out_of_the_way_but_not_deleted": "Keep notes here when you want them out of the way but not deleted",
     "notes.keep_this_page_open_and_reconnect_as_soon_as_possible_closing_it_may_mak": "Keep this page open and reconnect as soon as possible. Closing it may make these changes unrecoverable.",
     "notes.modified": "Modified",
+    "notes.recently_deleted_first": "Recently deleted first",
+    "notes.recently_edited_first": "Recently edited first",
     "notes.move_to_folder": "Move to folder",
     "notes.move_to_value0": "Move to \"{value0}\"",
     "notes.move_value0_notes_to_trash": "Move {value0} notes to trash?",
@@ -376,8 +413,15 @@ export const EN_US_MESSAGES = {
     "pwa.install_description": "Open Inkstone in its own window and keep the app shell available offline.",
     "pwa.install_inkstone": "Install Inkstone",
     "pwa.installed": "Installed",
-    "pwa.offline_ready": "Inkstone is ready offline",
-    "pwa.offline_ready_description": "The app shell is now stored on this device.",
+    "pwa.offline_ready": "All offline resources are ready",
+    "pwa.offline_ready_description": "Every Inkstone feature can now open on this device without a network connection.",
+    "pwa.complete_offline_access": "Complete offline access",
+    "pwa.complete_offline_preparing_description": "Inkstone stays responsive while the remaining features download quietly in the background.",
+    "pwa.complete_offline_ready": "All features ready",
+    "pwa.complete_offline_ready_description": "Features you have not opened yet are also available offline.",
+    "pwa.complete_offline_retry_description": "Downloaded resources are kept. Inkstone will continue automatically when the connection returns.",
+    "pwa.preparing_progress": "Preparing {completed}/{total}",
+    "pwa.waiting_for_network": "Waiting to continue",
     "pwa.refresh_now": "Refresh now",
     "pwa.update_ready": "An app update is ready",
     "pwa.update_ready_description": "Refresh when convenient. Pending note changes are saved first.",
@@ -402,13 +446,16 @@ export const EN_US_MESSAGES = {
     "settings.update_dialog_title": "A new version is available",
     "settings.update_manual_fork_hint": "Inkstone never changes or deploys your Fork automatically. Review the official repository, then sync it manually.",
     "settings.accent_color": "Accent color",
-    "settings.accent.amber": "Brass",
-    "settings.accent.celadon": "Celadon",
+    "settings.background_color": "Background",
+    "settings.background_paper": "Warm paper",
+    "settings.background_white": "Pure white",
+    "settings.accent.amber": "Marigold",
+    "settings.accent.celadon": "Jade",
     "settings.accent.cinnabar": "Cinnabar",
-    "settings.accent.graphite": "Graphite",
-    "settings.accent.indigo": "Indigo",
-    "settings.accent.terracotta": "Terracotta",
-    "settings.accent.wisteria": "Wisteria",
+    "settings.accent.graphite": "Slate",
+    "settings.accent.indigo": "Deep sea",
+    "settings.accent.terracotta": "Lagoon",
+    "settings.accent.wisteria": "Iris",
     "settings.access_key_id": "Access Key ID",
     "settings.account": "Account",
     "settings.action_failed_try_again": "Action failed. Try again",
@@ -436,8 +483,16 @@ export const EN_US_MESSAGES = {
     "settings.back_up_now": "Back up now",
     "settings.backup": "Backup",
     "settings.backup_completed_value0_targets": "Backup completed · {value0} targets",
+    "settings.backup_complete_marker_mismatch": "The COMPLETE marker does not match the manifest: {value0}",
+    "settings.backup_duplicate_path": "The backup folder contains a duplicate path: {value0}",
     "settings.backup_failed": "Backup failed",
-    "settings.backup_format": "Backup format",
+    "settings.backup_file_checksum_failed": "Backup file checksum failed: {value0}",
+    "settings.backup_file_size_mismatch": "Backup file size does not match: {value0}",
+    "settings.backup_manifest_not_found": "No Inkstone Markdown backup manifest was found. Select the complete extracted backup folder containing manifest.json, COMPLETE, and notes.",
+    "settings.backup_manifest_invalid": "The completed snapshot has an invalid or unsupported manifest: {value0}",
+    "settings.backup_missing_file": "The complete backup is missing a file: {value0}",
+    "settings.backup_no_complete_snapshot": "This folder has no complete snapshot with a valid COMPLETE marker.",
+    "settings.backup_newer_snapshot_skipped": "A newer snapshot ({value0}) was incomplete, so the newest complete snapshot was restored instead.",
     "settings.backup_target": "Backup target",
     "settings.backup_target_added": "Backup target added",
     "settings.backup_target_deleted": "Backup target deleted",
@@ -488,7 +543,7 @@ export const EN_US_MESSAGES = {
     "settings.display_name_saved": "Display name saved",
     "settings.download_json": "Download JSON",
     "settings.download_zip": "Download ZIP",
-    "settings.each_backup_goes_independently_to_every_enabled_target_it_includes_notes": "Each backup goes independently to every enabled target. It includes notes, folders, tags, and attachments and can be fully restored from the ZIP.",
+    "settings.each_backup_goes_independently_to_every_enabled_target_it_includes_notes": "Each target receives one complete downloadable ZIP. Notes retain their folder hierarchy, archived and trashed notes and original attachments stay separate, and generation plus upload are fully streamed.",
     "settings.edit_backup_target": "Edit backup target",
     "settings.editor": "Editor",
     "settings.endpoint": "Endpoint",
@@ -527,10 +582,8 @@ export const EN_US_MESSAGES = {
     "settings.import_failed": "Import failed",
     "settings.operation_completed_but_refresh_failed": "The operation completed, but the page could not refresh. Try again shortly",
     "settings.import_file": "Import file",
-    "settings.includes_every_note_folder_tag_and_attachment_for_a_complete_restore_plu": "Includes every note, folder, tag, and attachment for a complete restore, plus readable .md files",
+    "settings.includes_every_note_folder_tag_and_attachment_for_a_complete_restore_plu": "Downloads the same complete ZIP used by automatic backup. Extract very large backups and select the folder for bounded restore batches.",
     "settings.indent_width": "Indent width",
-    "settings.individual_file_mirror": "Individual-file mirror",
-    "settings.individual_files": "Individual files",
     "settings.inkstone_import_reminder": "[Inkstone] Import reminder:",
     "settings.interface_density": "Interface density",
     "settings.interface_language": "Interface language",
@@ -681,6 +734,8 @@ export const EN_US_MESSAGES = {
     "settings.registration_open": "Registration open",
     "settings.registration_status": "Registration status",
     "settings.region": "Region",
+    "settings.restore_backup_folder": "Restore Inkstone backup folder",
+    "settings.restore_backup_folder_description": "Select a folder extracted from the new ZIP, or a legacy backup root containing attachments and snapshots. Inkstone verifies COMPLETE and restores it in bounded batches.",
     "settings.reloaded_all_data": "Up to date",
     "settings.render_and_using_katex": "Display inline and block math",
     "settings.render_mermaid_code_blocks_into_flowcharts": "Display Mermaid code blocks as diagrams",
@@ -694,6 +749,7 @@ export const EN_US_MESSAGES = {
     "settings.scroll_sync": "Scroll sync",
     "settings.sec": " sec",
     "settings.select_file": "Select file",
+    "settings.select_backup_folder": "Select backup folder",
     "settings.selected_avatar": "Selected avatar",
     "settings.select_object_read_write_for_permissions_and_create_it_directly": ", select Object Read & Write for permissions, and create it directly.",
     "settings.secret_access_key": "Secret Access Key",
@@ -704,7 +760,6 @@ export const EN_US_MESSAGES = {
     "settings.sign_in_security": "Sign-in security",
     "settings.sign_up": "Sign up",
     "settings.simplified_chinese": "Simplified Chinese",
-    "settings.single_archive": "Single archive",
     "settings.spellcheck": "Spellcheck",
     "settings.standard": "Standard",
     "settings.store_backups_in_this_directory_or_leave_blank_to_use_the_root_directory": "Store backups in this directory, or leave blank to use the root directory",
@@ -730,8 +785,6 @@ export const EN_US_MESSAGES = {
     "settings.up_to_10_gb": "Up to 10 GB",
     "settings.update_failed": "Update failed",
     "settings.upload_local_image": "Upload a local image",
-    "settings.upload_individual_files_so_they_remain_browsable_and_editable_in_the_sto": "Upload individual files so they remain browsable and editable in the storage service",
-    "settings.upload_one_zip_to_minimize_requests_best_for_rate_limited_storage_provid": "Upload one ZIP to minimize requests; best for rate-limited storage providers",
     "settings.uploaded_avatar": "Uploaded local image",
     "settings.use_name_avatar": "Use name avatar",
     "settings.username_is_sign_in_id": "@username is your sign-in ID and does not change with your display name.",
@@ -833,6 +886,18 @@ export const EN_US_MESSAGES = {
     "sidebar.move_failed": "Move failed",
     "sidebar.move_later": "Move later",
     "sidebar.move_out_one_level": "Move out one level",
+    "folders.appearance": "Folder appearance",
+    "folders.choose_parent": "Choose parent folder",
+    "folders.color": "Color",
+    "folders.delete_contents_move_up": "{value0} direct notes and {value1} child folders will move up one level. Notes inside child folders stay in those folders.",
+    "folders.icon": "Icon",
+    "folders.includes_subfolders": "Includes notes in subfolders",
+    "folders.move_to": "Move to…",
+    "folders.no_color": "No color",
+    "folders.no_icon": "Default icon",
+    "folders.no_match": "No matching folders",
+    "folders.search": "Search folders",
+    "folders.top_level": "Top level",
     "sidebar.new_subfolder": "New subfolder",
     "sidebar.rename": "Rename",
     "sidebar.rename_failed": "Rename failed",
@@ -843,19 +908,25 @@ export const EN_US_MESSAGES = {
     "sidebar.this_folder_is_empty": "This folder is empty.",
     "tags.change_color": "Change color",
     "tags.clear_color": "Clear color",
+    "tags.color": "Color",
     "tags.color_failed": "Could not update color",
+    "tags.create_failed": "Could not create tag",
+    "tags.create_first": "Create your first tag",
     "tags.delete": "Delete tag",
     "tags.delete_confirm_value0": "Delete tag \"{value0}\"? It will also be removed from the related note bodies.",
     "tags.delete_failed": "Could not delete tag",
     "tags.deleted": "Tag deleted",
-    "tags.empty_search": "No matching tags",
+    "tags.delete_description_value0": "It is used by {value0} active notes. Matching content in archived notes and trash will also be handled, with a version kept for every changed note.",
     "tags.invalid_name": "Tag names cannot contain spaces or #",
-    "tags.manage": "Manage tags",
+    "tags.merge": "Merge tags",
+    "tags.merge_confirm_value0_value1": "Merge \"{value0}\" into \"{value1}\"?",
+    "tags.merge_description": "The two tags will become one, and related note bodies and metadata will use the existing tag name.",
+    "tags.new": "New tag",
+    "tags.new_placeholder": "Tag name",
     "tags.rename": "Rename",
     "tags.rename_failed": "Could not rename tag",
     "tags.renamed": "Tag renamed",
-    "tags.search_placeholder": "Search tags…",
-    "tags.total_value0": "{value0} tags",
+    "tags.updated_note_bodies_value0": "Updated {value0} note bodies. Open notes were refreshed too.",
     "time.just_now": "Just now",
     "time.this_month": "This month",
     "time.this_week": "This week",
@@ -983,19 +1054,23 @@ Use the left side to organize notes, the center to edit plain Markdown, and the 
 
 ## Why it works for long-term notes
 
-::: tabs
-@tab Writing
+:::: tabs
+::: tab-item Writing
 Independent titles, source editing, live preview, synchronized scrolling, focus and typewriter modes, an outline, and version history.
+:::
 
-@tab Organization
+::: tab-item Organization
 Twelve levels of drag-sortable folders, inline \`#tags\`, \`[[wiki links]]\`, backlinks, a graph, and full-text search. On desktop, open a second note to the side and choose edit, split, or preview independently in each active group. Deleting a folder promotes its children and moves direct notes to the parent.
+:::
 
-@tab Search & AI
+::: tab-item Search & AI
 Keyboard command-palette navigation, keyword search, and optional Workers AI semantic/hybrid search. Every account has a separate index, with automatic keyword fallback when AI is unavailable.
+:::
 
-@tab Safety & backup
+::: tab-item Safety & backup
 Self-hosting, an installable PWA, offline editing, multi-device sync, and conflict copies. Back up to several WebDAV or S3 targets and export readable Markdown, attachments, and complete structured data.
 :::
+::::
 
 ## Private MCP (optional)
 
@@ -1089,13 +1164,15 @@ flowchart LR
 ~~~~
 
 ~~~~md-example title="Tabs"
-::: tabs
-@tab First tab
+:::: tabs
+::: tab-item First tab
 This is the first tab panel.
+:::
 
-@tab Second tab
+::: tab-item Second tab
 This is the second tab panel.
 :::
+::::
 ~~~~
 
 ~~~~md-example title="Folded content"
